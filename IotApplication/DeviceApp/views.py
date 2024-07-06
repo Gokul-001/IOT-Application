@@ -1,26 +1,15 @@
 import base64
 from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
-from rest_framework import serializers,generics
 from rest_framework import status
 from rest_framework.response import Response
 from datetime import datetime
 from django.db import IntegrityError
-#from IotApplication.logControl import logger
 from .models import Device,TemperatureReadings,HumidityReadings
 from .serializers import DeviceSerializer,TemperatureSerializer,HumiditySerializer
-import template
 
-# Creates (post)/ List(get) - all the devices
-'''
-class DeviceListCreateView(generics.ListCreateAPIView):
-    queryset=Device.objects.all()
-    serializer_class=DeviceSerializer
-
-'''
-
-class DeviceCreateView(APIView):
+class DevicePOSTGETOperations(APIView):
+    #create
     def post(self,request,format=None):
         try:
             device_name=request.data.get('deviceName')
@@ -54,7 +43,27 @@ class DeviceCreateView(APIView):
                 {"message":str(e)},status=status.HTTP_400_BAD_REQUEST
             )
 
-class DeviceDeleteView(APIView):
+    #List all devices
+    def get(self,request,format=None):
+        try:
+            device=Device.objects.all()
+            serializedData=DeviceSerializer(device,many=True)
+            return Response(serializedData.data,status=status.HTTP_200_OK)
+        except Device.DoesNotExist:
+            return Response({
+                "ERROR" : 'No device found',
+                "Status":404
+            },
+            status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+ 
+class DeviceGETDELETEOperations(APIView):
+    #delete
     def delete(self,request,device_id=None,format=None):
         if device_id:
             try:
@@ -84,8 +93,8 @@ class DeviceDeleteView(APIView):
                     "ERROR" : 'Method error',
                     "Status":405
                 },status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        
-class DeviceRetrieveView(APIView):
+
+    #retrieve device properties
     def get(self,request,device_id,format=None):
         try:
             device=Device.objects.get(deviceId=device_id)
@@ -97,25 +106,8 @@ class DeviceRetrieveView(APIView):
             status=status.HTTP_404_NOT_FOUND)
         serializedData=DeviceSerializer(device)
         return Response(serializedData.data,status=status.HTTP_200_OK)
+   
 
-class DeviceListAllView(APIView):
-    def get(self,request,format=None):
-        try:
-            device=Device.objects.all()
-            serializedData=DeviceSerializer(device,many=True)
-            return Response(serializedData.data,status=status.HTTP_200_OK)
-        except Device.DoesNotExist:
-            return Response({
-                "ERROR" : 'No device found',
-                "Status":404
-            },
-            status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    
 class DeviceReadingsView(APIView):
     def get(self,request,parameter,device_id,format=None):
         start_on=request.query_params.get("start_on")
